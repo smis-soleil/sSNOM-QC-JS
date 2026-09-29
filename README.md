@@ -5,6 +5,8 @@ Quality control for NeaSNOM nano-FTIR spectra. This is a JavaScript port of the
 web page: the browser downloads it once and all file parsing, SNR calculation and
 plotting run on the user's computer. Spectra are never uploaded anywhere.
 
+**Open it at <https://smis-soleil.github.io/sSNOM-QC-JS/>**
+
 ## Usage
 
 1. Open the page and upload two NeaSNOM spectrum exports (`.txt`), one at a time.
@@ -42,8 +44,9 @@ Intentional differences from the Streamlit version:
 
 ## Hosting on GitHub Pages
 
-No build step is needed. Push this folder to a repository, then in
-**Settings → Pages** choose *Deploy from a branch*, branch `main`, folder `/ (root)`.
+The site is served by GitHub Pages from the root of `main` (*Settings → Pages →
+Deploy from a branch*). No build step is needed: every push to `main` is live at
+<https://smis-soleil.github.io/sSNOM-QC-JS/> about a minute later.
 
 ## Local development
 
@@ -87,10 +90,8 @@ and printing figures happen locally too. The page makes no requests to third par
 itself sets no cookies. The only thing it stores is your theme and sidebar layout, in
 the browser's local storage.
 
-The hosting does see visits. GitHub Pages logs visitor IP addresses for security, and
-when the site is opened at ssnom-qc.js.org the requests also pass through Cloudflare
-(used by js.org), which may set a bot-protection cookie. The site owner has no access
-to these logs.
+The hosting does see visits: GitHub Pages logs visitor IP addresses for security. The
+site owner has no access to these logs.
 
 ## License
 
