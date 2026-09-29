@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   calculateSnrStats, computePlotData, parseCustomSnrRanges, assessFileCompatibility, formatG,
+  pyFloatRepr,
 } from "../js/analysis.js";
 import { fileData, linspace } from "./helpers.js";
 
@@ -84,4 +85,21 @@ test("assessFileCompatibility is quiet for matching files", () => {
 test("formatG matches Python {:g}", () => {
   assert.equal(formatG(800), "800");
   assert.equal(formatG(812.5), "812.5");
+});
+
+test("computePlotData rejects wavenumber arrays of different lengths", () => {
+  const sp = new Float64Array(10).fill(1);
+  assert.throws(() => computePlotData(linspace(650, 1800, 10), sp, linspace(650, 1800, 9), sp),
+    (e) => e.name === "ValueError" && /Wavenumber arrays/.test(e.message));
+});
+
+test("assessFileCompatibility skips files without wavenumbers", () => {
+  const ok = { data: { Wavenumber: linspace(650, 1800, 10) } };
+  assert.deepEqual(assessFileCompatibility(ok, { data: {} }), { warnings: [], presetValid: true });
+  assert.deepEqual(assessFileCompatibility(undefined, ok), { warnings: [], presetValid: true });
+});
+
+test("pyFloatRepr matches Python repr() of a float", () => {
+  assert.equal(pyFloatRepr(800), "800.0");
+  assert.equal(pyFloatRepr(812.5), "812.5");
 });

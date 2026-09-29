@@ -64,6 +64,12 @@ describe("single-key shortcuts", () => {
     assert.equal(rows.length, 7);
   });
 
+  test("keys typed through an input method (IME) are ignored", async () => {
+    const app = await loadApp();
+    app.key("s", { isComposing: true });
+    assert.equal(isCollapsed(app), false);
+  });
+
   test("other shortcuts are paused while the list is open", async () => {
     const app = await loadApp();
     app.key("?");

@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PLOT_CONFIG, comparisonFigure, customSnrFigure, figureCaption } from "../js/plots.js";
+import {
+  PLOT_CONFIG, captionLines, comparisonFigure, customSnrFigure, figureCaption, mainPlotConfig,
+} from "../js/plots.js";
 import { fileData } from "./helpers.js";
 
 test("comparisonFigure builds spectra plus two ratio panels", () => {
@@ -81,4 +83,32 @@ test("ratio panels keep matplotlib's tick spacing at the reference size", () => 
 test("plot config never offers to upload data to Plotly's cloud", () => {
   assert.equal(PLOT_CONFIG.showSendToCloud, false);
   assert.equal(PLOT_CONFIG.plotlyServerURL, "");
+});
+
+test("a caption part longer than a line is split, nothing is lost", () => {
+  const name = "x".repeat(50) + ".txt";
+  const lines = captionLines(fileData(name), fileData("b.txt"), 20);
+  assert.ok(lines.every((l) => l.length <= 20), lines.join("|"));
+  assert.ok(lines.join("").includes(name));
+});
+
+test("narrower figures get wider tick steps, keeping at least two ticks", () => {
+  const dticks = (w) => {
+    const { layout } = comparisonFigure(fileData("a"), fileData("bb"), "O2A", w);
+    return [layout.xaxis2.dtick, layout.xaxis3.dtick];
+  };
+  assert.deepEqual(dticks(400), [100, 250]);
+  assert.deepEqual(dticks(200), [200, 500]);
+  assert.deepEqual(dticks(40), [250, 500]); // 800, 1050, 1300 and 1000, 1500
+});
+
+test("the spectra autoscale button uses Plotly's autoscale icon", () => {
+  const saved = globalThis.Plotly;
+  const autoscale = { width: 1000, height: 1000, path: "M0 0" };
+  globalThis.Plotly = { Icons: { autoscale } };
+  try {
+    assert.equal(mainPlotConfig().modeBarButtonsToAdd[0].icon, autoscale);
+  } finally {
+    globalThis.Plotly = saved;
+  }
 });

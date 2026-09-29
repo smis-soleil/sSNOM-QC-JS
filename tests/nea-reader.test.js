@@ -84,3 +84,39 @@ test("formatParamValue prints metadata like str() in Python", () => {
   assert.equal(formatParamValue("Detector", "R"), "R");
   assert.equal(formatParamValue("LaserSource", ""), "");
 });
+
+test("bad header values name the field", () => {
+  const parse = (line) => () => parseHeaderLine(line, {});
+  assert.throws(parse("# Q-Factor:\t \tabc"), /Invalid number 'abc' in header field 'QFactor'/);
+  assert.throws(parse("# Averaging:\t \t4.5"), /Invalid integer '4.5' in header field 'Averaging'/);
+  assert.throws(parse("# Pixel Area (X, Y, Z):\t[px]\t1\tx\t1024"), /Invalid integer 'x' in header field 'PixelArea'/);
+  assert.throws(parse("# Scanner Center Position (X, Y):\t[µm]\t46.77"),
+    /Missing value in header field 'ScannerCenterPosition'/);
+  assert.throws(parse("# Interferometer Center/Distance:\t[µm]\t470"),
+    /Missing value in header field 'InterferometerCenterDistance'/);
+  assert.throws(parse("# Averaging:\t \t"), /Invalid integer ''/);
+  assert.throws(parse("# Averaging:\t"), /Malformed header line: '# Averaging:'/);
+});
+
+test("a bad header line rejects the whole file", () => {
+  const text = makeNeaText().replace("# Averaging:\t \t45", "# Averaging:\t \tmany");
+  assert.throws(() => parseNeaSpectrum(text), /Invalid integer 'many'/);
+});
+
+test("short rows are padded with NaN; empty and all-NaN columns are dropped", () => {
+  const header = makeNeaText().split("\n").slice(0, 17).join("\n");
+  const text = `${header}\nRow\tColumn\t\tWavenumber\tO2A\tNote\n` +
+    "0\t0\t\t800\t1.5\tx\n" +
+    "0\t0\t\t900\n";
+  const { data } = parseNeaSpectrum(text);
+  assert.deepEqual(Object.keys(data), ["Row", "Column", "Wavenumber", "O2A"]);
+  assert.deepEqual([...data.Wavenumber], [800, 900]);
+  assert.equal(data.O2A[0], 1.5);
+  assert.ok(Number.isNaN(data.O2A[1]));
+});
+
+test("pyFloatStr handles infinities and negative zero", () => {
+  assert.equal(pyFloatStr(Infinity), "inf");
+  assert.equal(pyFloatStr(-Infinity), "-inf");
+  assert.equal(pyFloatStr(-0), "-0.0");
+});

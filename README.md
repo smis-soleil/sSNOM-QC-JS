@@ -66,8 +66,10 @@ npm test             # all tests (Node 22+ built-in test runner)
   SNR maths and figure building.
 - `tests/app.test.js`, `tests/chrome.test.js`, `tests/shortcuts.test.js`: the whole UI,
   driven through the real `index.html` in [jsdom](https://github.com/jsdom/jsdom) with a
-  stand-in for Plotly (`tests/dom.js`) — opening files, messages, order, custom ranges,
-  reset, error states, theme, sidebar, print, copy, fullscreen and keyboard shortcuts.
+  stand-in for Plotly (`tests/dom.js`) — opening and dropping files, messages, order,
+  custom ranges, reset, error states, theme, sidebar (collapse, drag and keyboard resize),
+  print, copy, fullscreen, the privacy note, keyboard shortcuts and blocked storage or
+  clipboard.
 
 ## Layout
 

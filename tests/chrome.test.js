@@ -61,10 +61,32 @@ describe("theme", () => {
     assert.equal(app.window.localStorage.getItem("ssnomqc-theme"), "light");
   });
 
+  test("follows system theme changes unless one was picked", async () => {
+    const app = await loadApp({ prefersDark: false });
+    app.setMedia("(prefers-color-scheme: dark)", true);
+    assert.equal(pressed(app, "dark"), "true");
+    app.click(app.document.querySelector('[data-theme-choice="light"]'));
+    app.setMedia("(prefers-color-scheme: dark)", false);
+    app.setMedia("(prefers-color-scheme: dark)", true);
+    assert.equal(pressed(app, "light"), "true", "the picked theme wins");
+    assert.equal(app.document.documentElement.dataset.theme, "light");
+  });
+
   test("a saved theme is applied on load", async () => {
     const app = await loadApp({ storage: { "ssnomqc-theme": "dark" }, prefersDark: false });
     assert.equal(app.document.documentElement.dataset.theme, "dark");
     assert.equal(pressed(app, "dark"), "true");
+  });
+});
+
+describe("blocked storage (private browsing)", () => {
+  test("the app still starts and theme and sidebar still work", async () => {
+    const app = await loadApp({ storageBlocked: true });
+    app.click(app.document.querySelector('[data-theme-choice="dark"]'));
+    assert.equal(app.document.documentElement.dataset.theme, "dark");
+    app.click("collapse-btn");
+    assert.equal(app.$("app").classList.contains("sidebar-collapsed"), true);
+    assert.deepEqual(app.errors, []);
   });
 });
 
@@ -95,6 +117,38 @@ describe("sidebar", () => {
     assert.equal(app.window.localStorage.getItem("ssnomqc-sidebar-collapsed"), null);
   });
 
+  test("collapses when the window becomes phone-sized", async () => {
+    const app = await loadApp();
+    app.setMedia("screen and (max-width: 767.98px)", true);
+    assert.equal(app.$("app").classList.contains("sidebar-collapsed"), true);
+    assert.equal(app.window.localStorage.getItem("ssnomqc-sidebar-collapsed"), null, "not saved");
+    app.setMedia("screen and (max-width: 767.98px)", false);
+    assert.equal(app.$("app").classList.contains("sidebar-collapsed"), true, "stays as it is");
+  });
+
+  test("can be resized by dragging, within 200-600 px, and remembers it", async () => {
+    const app = await loadApp();
+    const widthVar = () => app.document.documentElement.style.getPropertyValue("--sidebar-width");
+    const down = app.pointer("pointerdown", 300);
+    assert.ok(down.defaultPrevented, "no text selection while dragging");
+    assert.ok(app.$("app").classList.contains("resizing"));
+    app.pointer("pointermove", 350);
+    assert.equal(widthVar(), "350px");
+    app.pointer("pointermove", 900);
+    assert.equal(widthVar(), "600px");
+    app.pointer("pointermove", 50);
+    assert.equal(widthVar(), "200px");
+    app.$("sidebar").getBoundingClientRect = () => ({ width: 200 });
+    let layouts = 0;
+    app.window.addEventListener("app:layout", () => layouts++);
+    app.pointer("pointerup", 50);
+    assert.equal(app.$("app").classList.contains("resizing"), false);
+    assert.equal(app.window.localStorage.getItem("ssnomqc-sidebar-width"), "200");
+    assert.equal(layouts, 1, "figures are redrawn after the drag");
+    app.pointer("pointermove", 400);
+    assert.equal(widthVar(), "200px", "moves after release are ignored");
+  });
+
   test("can be resized with the keyboard, within 200-600 px, and remembers it", async () => {
     const app = await loadApp();
     const sidebar = app.$("sidebar");
@@ -111,6 +165,8 @@ describe("sidebar", () => {
     assert.equal(widthVar(), "600px");
     arrow("ArrowLeft", 205);
     assert.equal(widthVar(), "200px");
+    arrow("ArrowUp", 205);
+    assert.equal(widthVar(), "200px", "other keys do nothing");
   });
 });
 
@@ -155,6 +211,16 @@ describe("copy figures", () => {
     assert.equal(app.drawn.length, 2, "main and custom figure");
     assert.ok(app.drawn[1].y > app.drawn[0].y, "stacked vertically");
     assert.equal(app.$("copy-figures-btn").title, "Figures copied");
+  });
+
+  test("shows a failure when the image cannot be encoded", async () => {
+    const app = await loadApp();
+    await app.openPair();
+    app.canvas.fail = true;
+    app.click("copy-figures-btn");
+    await app.settle(50);
+    assert.equal(app.$("copy-figures-btn").title, "Copy failed");
+    assert.equal(app.clipboard.writes.length, 0);
   });
 
   test("shows a failure when the clipboard refuses", async () => {
@@ -212,6 +278,16 @@ describe("fullscreen and code block", () => {
     app.key("Escape");
     assert.equal(fig.classList.contains("fullscreen"), false);
     assert.equal(btn.getAttribute("aria-label"), "Fullscreen");
+  });
+
+  test("a blocked clipboard leaves the code block's copy button as it was", async () => {
+    const app = await loadApp();
+    app.clipboard.textFail = true;
+    const btn = app.document.querySelector("#motd .copy-btn");
+    const before = btn.innerHTML;
+    app.click(btn);
+    await app.settle();
+    assert.equal(btn.innerHTML, before);
   });
 
   test("the suggested-parameters block can be copied", async () => {

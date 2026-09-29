@@ -13,11 +13,13 @@ const APP = pathToFileURL(fileURLToPath(new URL("js/app.js", ROOT))).href;
 // matchMedia results, read live so module-level MediaQueryLists stay usable
 // across tests (chrome.js creates them once, on first import).
 const media = { "screen and (max-width: 767.98px)": false, "(prefers-color-scheme: dark)": false };
+let mediaListeners = []; // [query, listener] of the current test's page
 function matchMedia(query) {
   return {
     get matches() { return !!media[query]; },
     media: query,
-    addEventListener() {}, removeEventListener() {},
+    addEventListener(type, fn) { mediaListeners.push([query, fn]); },
+    removeEventListener() {},
   };
 }
 
@@ -52,9 +54,13 @@ function fakePlotly(doc) {
 
 let instance = 0;
 
-export async function loadApp({ storage = {}, mobile = false, prefersDark = false, width = 800 } = {}) {
+export async function loadApp({
+  storage = {}, storageBlocked = false, mobile = false, prefersDark = false, width = 800,
+  beforeStart = () => {},
+} = {}) {
   media["screen and (max-width: 767.98px)"] = mobile;
   media["(prefers-color-scheme: dark)"] = prefersDark;
+  mediaListeners = [];
 
   const dom = new JSDOM(HTML, { url: "http://localhost/", pretendToBeVisual: true });
   const w = dom.window;
@@ -74,7 +80,11 @@ export async function loadApp({ storage = {}, mobile = false, prefersDark = fals
   w.HTMLCanvasElement.prototype.getContext = function () {
     return { fillRect() {}, drawImage: (img, x, y) => drawn.push({ x, y }), set fillStyle(v) {} };
   };
-  w.HTMLCanvasElement.prototype.toBlob = function (cb) { cb(new w.Blob(["png"], { type: "image/png" })); };
+  const canvas = { fail: false };
+  w.HTMLCanvasElement.prototype.toBlob = function (cb) {
+    cb(canvas.fail ? null : new w.Blob(["png"], { type: "image/png" }));
+  };
+  w.HTMLElement.prototype.setPointerCapture = function () {};
   // No layout engine: give figures a width so they get drawn.
   Object.defineProperty(w.HTMLElement.prototype, "clientWidth", {
     get() { return this.classList.contains("figure") ? width : 0; }, configurable: true,
@@ -83,7 +93,7 @@ export async function loadApp({ storage = {}, mobile = false, prefersDark = fals
     get() { return this.classList.contains("figure") ? 600 : 0; }, configurable: true,
   });
 
-  const clipboard = { writes: [], texts: [], fail: false };
+  const clipboard = { writes: [], texts: [], fail: false, textFail: false };
   Object.defineProperty(w.navigator, "clipboard", {
     configurable: true,
     value: {
@@ -92,7 +102,10 @@ export async function loadApp({ storage = {}, mobile = false, prefersDark = fals
         const blob = await items[0].types["image/png"];
         clipboard.writes.push(blob);
       },
-      async writeText(t) { clipboard.texts.push(t); },
+      async writeText(t) {
+        if (clipboard.textFail) throw new Error("denied");
+        clipboard.texts.push(t);
+      },
     },
   });
   class ClipboardItem { constructor(types) { this.types = types; } }
@@ -102,7 +115,12 @@ export async function loadApp({ storage = {}, mobile = false, prefersDark = fals
   const Plotly = fakePlotly(w.document);
   const globals = {
     window: w, document: w.document, HTMLElement: w.HTMLElement, Event: w.Event, KeyboardEvent: w.KeyboardEvent,
-    Image: w.Image, localStorage: w.localStorage, getComputedStyle: w.getComputedStyle,
+    Image: w.Image, getComputedStyle: w.getComputedStyle,
+    // Private browsing / blocked site data: every storage access throws.
+    localStorage: storageBlocked
+      ? { getItem() { throw new w.DOMException("blocked", "SecurityError"); },
+          setItem() { throw new w.DOMException("blocked", "SecurityError"); } }
+      : w.localStorage,
     requestAnimationFrame: w.requestAnimationFrame.bind(w), cancelAnimationFrame: w.cancelAnimationFrame.bind(w),
     ResizeObserver: class { observe() {} disconnect() {} }, ClipboardItem, Plotly,
   };
@@ -115,6 +133,7 @@ export async function loadApp({ storage = {}, mobile = false, prefersDark = fals
   // collect them per app instead of cluttering the test output.
   const errors = [];
   console.error = (...a) => errors.push(a);
+  beforeStart(w.document);
   await import(`${APP}?instance=${++instance}`);
 
   const doc = w.document;
@@ -122,7 +141,7 @@ export async function loadApp({ storage = {}, mobile = false, prefersDark = fals
   const settle = (ms = 30) => new Promise((r) => setTimeout(r, ms));
 
   const app = {
-    window: w, document: doc, $, Plotly, clipboard, errors, drawn,
+    window: w, document: doc, $, Plotly, clipboard, canvas, errors, drawn,
     get printed() { return printed; },
     settle,
     /** Pick a file through the (hidden) file input, like the Open button does. */
@@ -137,6 +156,24 @@ export async function loadApp({ storage = {}, mobile = false, prefersDark = fals
     async openPair() {
       await app.open("a.txt", makeNeaText({ fn: (c, i) => 1 + c * 0.1 + Math.sin(i) * 0.01 }));
       await app.open("b.txt", makeNeaText({ fn: (c, i) => 1 + c * 0.2 + Math.cos(i) * 0.01 }));
+    },
+    /** Drop a file on the uploader's drop zone. */
+    async drop(name, text = makeNeaText(), target = $("dropzone")) {
+      const e = new w.Event("drop", { bubbles: true, cancelable: true });
+      Object.defineProperty(e, "dataTransfer", { value: { files: [new w.File([text], name, { type: "text/plain" })] } });
+      target.dispatchEvent(e);
+      await settle();
+      return e;
+    },
+    /** Change a media query result, firing its change listeners like the browser. */
+    setMedia(query, matches) {
+      media[query] = matches;
+      for (const [q, fn] of mediaListeners) if (q === query) fn({ matches, media: q });
+    },
+    pointer(type, clientX, target = $("sidebar-resizer")) {
+      const e = new w.PointerEvent(type, { bubbles: true, cancelable: true, clientX, pointerId: 1 });
+      target.dispatchEvent(e);
+      return e;
     },
     click(el) { (typeof el === "string" ? $(el) : el).click(); },
     key(key, opts = {}, target = doc) {

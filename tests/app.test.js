@@ -120,6 +120,63 @@ describe("opening files", () => {
     assert.equal(app.$("file-list-section").hidden, true);
   });
 
+  test("files of an unknown type get a generic rejection", async () => {
+    const app = await loadApp();
+    await app.open("data.csv", "x", { type: "" });
+    assert.equal(app.text("upl-chip-size"), "This file type files are not allowed.");
+  });
+
+  test("a file can be dropped on the uploader", async () => {
+    const app = await loadApp();
+    const zone = app.$("dropzone");
+    const over = new app.window.Event("dragover", { bubbles: true, cancelable: true });
+    zone.dispatchEvent(over);
+    assert.ok(over.defaultPrevented, "the drop zone accepts drops");
+    assert.ok(zone.classList.contains("dragover"));
+    zone.dispatchEvent(new app.window.Event("dragleave"));
+    assert.equal(zone.classList.contains("dragover"), false);
+    zone.dispatchEvent(new app.window.Event("dragenter", { cancelable: true }));
+    const drop = await app.drop("a.txt");
+    assert.ok(drop.defaultPrevented);
+    assert.equal(zone.classList.contains("dragover"), false);
+    assert.deepEqual(app.fileList(), ["1. a.txt"]);
+  });
+
+  test("dropping a file elsewhere does not leave the app", async () => {
+    const app = await loadApp();
+    const e = await app.drop("a.txt", undefined, app.$("main"));
+    assert.ok(e.defaultPrevented, "the browser would otherwise open the file");
+    assert.deepEqual(app.fileList(), []);
+    const over = new app.window.Event("dragover", { bubbles: true, cancelable: true });
+    app.$("main").dispatchEvent(over);
+    assert.ok(over.defaultPrevented);
+  });
+
+  test("removing the chip while a file is read discards it", async () => {
+    for (const text of [makeNeaText(), "not a spectrum\n"]) {
+      const app = await loadApp();
+      const input = app.$("file-input");
+      Object.defineProperty(input, "files", { value: [new app.window.File([text], "a.txt")], configurable: true });
+      input.dispatchEvent(new app.window.Event("change"));
+      app.click("upl-chip-remove"); // before the file text has been read
+      await app.settle();
+      assert.deepEqual(app.fileList(), []);
+      assert.deepEqual(app.msgs("upload-messages"), [], "no late result or error");
+      assert.equal(app.$("upl-chip-row").hidden, true);
+    }
+  });
+
+  test("cancelling the file picker changes nothing", async () => {
+    const app = await loadApp();
+    await app.open("a.txt");
+    const input = app.$("file-input");
+    Object.defineProperty(input, "files", { value: [], configurable: true });
+    input.dispatchEvent(new app.window.Event("change"));
+    await app.settle();
+    assert.deepEqual(app.fileList(), ["1. a.txt"]);
+    assert.equal(app.$("upl-chip-row").hidden, true);
+  });
+
   test("the Open and + buttons open the file picker", async () => {
     const app = await loadApp();
     let picks = 0;
@@ -237,6 +294,16 @@ describe("custom SNR ranges", () => {
     assert.deepEqual(app.Plotly.last("custom-plot").layout.xaxis.range, [900, 1100]);
   });
 
+  test("Enter in a range field commits it", async () => {
+    const app = await loadApp();
+    app.click(app.document.querySelector("#custom-snr summary"));
+    const [start] = app.snrInputs();
+    start.focus();
+    assert.equal(app.document.activeElement, start);
+    app.key("Enter", {}, start);
+    assert.notEqual(app.document.activeElement, start, "blurred, which commits like st.text_input");
+  });
+
   test("the expander collapses when elements above it change, like Streamlit", async () => {
     const app = await loadApp();
     const ex = app.$("custom-snr");
@@ -348,6 +415,30 @@ describe("figures", () => {
     const app = await loadApp({ width: 640 });
     await app.openPair();
     assert.equal(app.Plotly.last("main-plot").layout.width, 640);
+  });
+
+  test("fullscreen figures are resized to fit the window", async () => {
+    const app = await loadApp({ width: 800 }); // the harness reports 800 x 600 px figures
+    await app.openPair();
+    app.setRow(0, "1000", "1200");
+    app.click("display-graphs");
+    for (const id of ["main", "custom"]) {
+      app.click(app.$(`${id}-figure`).querySelector(".fs-btn"));
+      await app.settle(50);
+      const { layout } = app.Plotly.last(`${id}-plot`);
+      assert.ok(layout.width <= 800 - 64, `${id}: width ${layout.width}`);
+      assert.ok(layout.height <= 600 - 80 + 1, `${id}: height ${layout.height}`);
+      app.key("Escape");
+      await app.settle(50);
+      assert.equal(app.Plotly.last(`${id}-plot`).layout.width, 800, `${id}: back to normal size`);
+    }
+  });
+
+  test("a failing page shell does not break opening and plotting", async () => {
+    const app = await loadApp({ beforeStart: (doc) => doc.getElementById("print-btn").remove() });
+    assert.ok(app.errors.length > 0, "the error is logged");
+    await app.openPair();
+    assert.ok(app.Plotly.last("main-plot"));
   });
 
   test("redraw when the sidebar changes the layout", async () => {

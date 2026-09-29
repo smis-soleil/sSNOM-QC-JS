@@ -13,14 +13,20 @@ export function pyFloat(raw) {
   return null;
 }
 
+function requireValue(raw, field) {
+  if (raw === undefined) throw new Error(`Missing value in header field '${field}'.`);
+}
+
 function requireFloat(raw, field) {
-  const v = pyFloat(raw ?? "");
+  requireValue(raw, field);
+  const v = pyFloat(raw);
   if (v === null) throw new Error(`Invalid number '${raw}' in header field '${field}'.`);
   return v;
 }
 
 function requireInt(raw, field) {
-  const s = String(raw ?? "").trim();
+  requireValue(raw, field);
+  const s = raw.trim();
   if (!/^[+-]?\d+$/.test(s)) throw new Error(`Invalid integer '${raw}' in header field '${field}'.`);
   return parseInt(s, 10);
 }
@@ -44,7 +50,7 @@ export function parseHeaderLine(line, params = {}) {
     params[field] = requireInt(ct[2], field);
   } else if (line.includes("Interferometer Center/Distance")) {
     field = field.replace("/", "");
-    params[field] = [ct[2], ct[3]].map((v) => requireFloat((v ?? "").replaceAll(",", ""), field));
+    params[field] = [ct[2], ct[3]].map((v) => requireFloat(v?.replaceAll(",", ""), field));
   } else if (line.includes("Regulator (P, I, D)")) {
     field = "Regulator";
     params[field] = [ct[2], ct[3], ct[4]].map((v) => requireFloat(v, field));
