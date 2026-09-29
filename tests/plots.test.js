@@ -6,7 +6,8 @@ import { fileData } from "./helpers.js";
 test("comparisonFigure builds spectra plus two ratio panels", () => {
   const fig = comparisonFigure(fileData("a"), fileData("bb"), "O3A", 856, new Date(2024, 4, 19, 9, 5));
   assert.equal(fig.data.length, 4);
-  assert.deepEqual(fig.layout.xaxis.range, [0, 5000]);
+  assert.equal(fig.layout.xaxis.range, undefined, "spectra start autoscaled to the data");
+  assert.equal(fig.layout.xaxis.autorange, true);
   assert.deepEqual(fig.layout.xaxis2.range, [800, 1300]);
   assert.deepEqual(fig.layout.xaxis3.range, [650, 1800]);
   assert.match(fig.layout.annotations[0].text, /Project: a<br>Plot date: 2024\/05\/19 09:05/);

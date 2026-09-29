@@ -325,6 +325,25 @@ describe("figures", () => {
     assert.equal(config.plotlyServerURL, "");
   });
 
+  test("autoscale only touches the spectra panel, not the SNR panels", async () => {
+    const app = await loadApp();
+    await app.openPair();
+    app.setRow(0, "1000", "1200");
+    app.click("display-graphs");
+    const main = app.Plotly.last("main-plot").config;
+    assert.ok(main.modeBarButtonsToRemove.includes("autoScale2d"));
+    assert.equal(main.doubleClick, "reset");
+    const [button] = main.modeBarButtonsToAdd;
+    button.click(app.$("main-plot"));
+    const { relayout } = app.Plotly.calls.find((c) => c.relayout);
+    assert.deepEqual(relayout, { "xaxis.autorange": true, "yaxis.autorange": true });
+    const custom = app.Plotly.last("custom-plot").config;
+    assert.ok(custom.modeBarButtonsToRemove.includes("autoScale2d"));
+    assert.equal(custom.modeBarButtonsToAdd, undefined);
+    assert.equal(custom.toImageButtonOptions.filename, "ssnom-qc-custom-snr");
+    assert.equal(custom.showSendToCloud, false);
+  });
+
   test("are drawn at the figure's width", async () => {
     const app = await loadApp({ width: 640 });
     await app.openPair();

@@ -35,6 +35,10 @@ function fakePlotly(doc) {
       gd.layout = layout;
       return Promise.resolve(gd);
     },
+    relayout(gd, update) {
+      record(gd, { id: gd.id, relayout: update });
+      return Promise.resolve(gd);
+    },
     purge() {},
     async toImage(gd, opts) {
       record(gd, { id: gd.id, toImage: opts });

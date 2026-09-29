@@ -8,7 +8,7 @@ import {
   DEMOD_OPTIONS, MAX_FILES, MAX_UPLOAD_MB, assessFileCompatibility, parseCustomSnrRanges,
 } from "./analysis.js";
 import {
-  PLOT_CONFIG, comparisonFigure, customAspect, customSnrFigure,
+  comparisonFigure, customAspect, customPlotConfig, customSnrFigure, mainPlotConfig,
 } from "./plots.js";
 import { hydrateIcons } from "./icons.js";
 import { setupChrome, setupFullscreen } from "./chrome.js";
@@ -299,7 +299,7 @@ function drawFigures() {
     }
     if (fig.layout.width > 0) {
       Plotly.react($("main-plot"), fig.data, { ...fig.layout, autosize: false },
-        { ...PLOT_CONFIG, responsive: false });
+        { ...mainPlotConfig(), responsive: false });
     }
   }
   if (custom && !$("custom-figure").hidden) {
@@ -308,8 +308,7 @@ function drawFigures() {
     if (width > 0) {
       const fig = customSnrFigure(custom.f1, custom.f2, custom.order, custom.ranges, width);
       Plotly.react($("custom-plot"), fig.data, { ...fig.layout, width, height, autosize: false },
-        { ...PLOT_CONFIG, responsive: false,
-          toImageButtonOptions: { ...PLOT_CONFIG.toImageButtonOptions, filename: "ssnom-qc-custom-snr" } });
+        { ...customPlotConfig(), responsive: false });
     }
   }
 }

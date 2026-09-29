@@ -33,7 +33,35 @@ export const PLOT_CONFIG = {
   responsive: true,
   modeBarButtonsToRemove: ["select2d", "lasso2d"],
   toImageButtonOptions: { format: "png", filename: "ssnom-qc", scale: 2 },
+  // Double-click restores the initial ranges instead of autoscaling every panel.
+  doubleClick: "reset",
 };
+
+/**
+ * Main figure: autoscale only the spectra panel. Plotly's own button would
+ * also autoscale the SNR panels and lose their preset ranges.
+ */
+export function mainPlotConfig() {
+  return {
+    ...PLOT_CONFIG,
+    modeBarButtonsToRemove: [...PLOT_CONFIG.modeBarButtonsToRemove, "autoScale2d"],
+    modeBarButtonsToAdd: [{
+      name: "autoscaleSpectra",
+      title: "Autoscale spectra",
+      icon: globalThis.Plotly?.Icons?.autoscale,
+      click: (gd) => Plotly.relayout(gd, { "xaxis.autorange": true, "yaxis.autorange": true }),
+    }],
+  };
+}
+
+/** Custom figure: every panel is an SNR panel with a preset range, so no autoscale. */
+export function customPlotConfig() {
+  return {
+    ...PLOT_CONFIG,
+    modeBarButtonsToRemove: [...PLOT_CONFIG.modeBarButtonsToRemove, "autoScale2d"],
+    toImageButtonOptions: { ...PLOT_CONFIG.toImageButtonOptions, filename: "ssnom-qc-custom-snr" },
+  };
+}
 
 // File names and header values end up in Plotly's HTML-like text labels.
 function esc(s) {
@@ -225,7 +253,7 @@ export function comparisonFigure(file1, file2, order, width = REF_WIDTH, now = n
     legend: legendAt(pt, xLeft, [0, 1]),
     legend2: legendAt(pt, xRight, yTop),
     legend3: legendAt(pt, xRight, yBottom),
-    xaxis: axis(pt, { domain: xLeft, range: [0, 5000], title: axisTitle(pt, "Frequency / cm⁻¹") }),
+    xaxis: axis(pt, { domain: xLeft, autorange: true, title: axisTitle(pt, "Frequency / cm⁻¹") }),
     yaxis: axis(pt, { title: axisTitle(pt, `${order} / a.u.`) }),
     xaxis2: axis(pt, { domain: xRight, anchor: "y2", range: [START_WN1, END_WN1],
       dtick: tickStep([START_WN1, END_WN1], rightPx, xLabelPx, [100, 200, 250, 500]) }),
