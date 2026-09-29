@@ -87,6 +87,7 @@ body {
 .sidebar {
   position: sticky; top: 0; height: 100vh;
   flex: none;
+  display: flex; flex-direction: column;
   width: var(--sidebar-width);
   background: var(--sidebar-bg);
   overflow: hidden;
@@ -105,11 +106,26 @@ body {
 }
 .sidebar-content {
   width: var(--sidebar-width);
-  height: 100vh;
+  flex: 1; min-height: 0;
   overflow-y: auto;
-  padding: 0 20px 96px;
+  padding: 0 20px 24px;
   display: flex; flex-direction: column; gap: 16px;
 }
+
+.sidebar-footer {
+  flex: none; width: var(--sidebar-width);
+  padding: 8px 20px 12px;
+  border-top: 1px solid var(--border);
+}
+.footer-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 0; border: 0; background: none;
+  font: 400 14px/1.6 var(--font); color: var(--muted);
+  cursor: pointer;
+}
+.footer-link .icon { width: 16px; height: 16px; }
+.footer-link:hover { color: var(--text); }
+.footer-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
 
 .collapse-btn { opacity: 0; transition: opacity 0.15s; pointer-events: auto; }
 .sidebar:hover .collapse-btn, .collapse-btn:focus-visible { opacity: 1; }
@@ -351,7 +367,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 32px 0 48px; } /* s
     width: min(var(--sidebar-width), 100vw);
     box-shadow: var(--shadow);
   }
-  .sidebar-header, .sidebar-content { width: min(var(--sidebar-width), 100vw); }
+  .sidebar-header, .sidebar-content, .sidebar-footer { width: min(var(--sidebar-width), 100vw); }
   .collapse-btn { opacity: 1; }
   .sidebar-resizer { display: none; }
   .main { padding: 16px 16px 160px; }
@@ -368,7 +384,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 32px 0 48px; } /* s
 .modal::backdrop { background: rgba(0, 0, 0, 0.5); }
 .modal form { display: flex; flex-direction: column; gap: 16px; }
 .modal h3 { font-size: 22px; }
-.modal-actions { display: flex; justify-content: flex-end; }
+.privacy-text { display: flex; flex-direction: column; gap: 12px; font-size: 15px; line-height: 1.6; }
 .shortcuts { border-collapse: collapse; font-size: 15px; }
 .shortcuts td { padding: 6px 0; border-bottom: 1px solid var(--border); }
 .shortcuts tr:last-child td { border-bottom: 0; }

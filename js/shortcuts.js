@@ -72,7 +72,7 @@ export function setupShortcuts({ cycleOrder }) {
       return;
     }
 
-    if (e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target) || dialog.open) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target) || document.querySelector("dialog[open]")) return;
     if (e.key === "?") {
       e.preventDefault();
       dialog.showModal();

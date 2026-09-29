@@ -80,6 +80,9 @@
 
         <button type="button" class="btn btn-primary btn-block" id="reset">Reset All</button>
       </div>
+      <div class="sidebar-footer">
+        <button type="button" class="footer-link" id="privacy-btn" aria-haspopup="dialog"><span data-icon="info"></span>Privacy note</button>
+      </div>
       <div class="sidebar-resizer" id="sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
     </aside>
 
@@ -135,7 +138,23 @@ Spectral resolution: 6 cm⁻¹</code></pre>
     <form method="dialog">
       <h3 id="shortcuts-title">Keyboard shortcuts</h3>
       <table class="shortcuts"><tbody></tbody></table>
-      <div class="modal-actions"><button type="submit" class="btn btn-secondary">Close</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="privacy-dialog" aria-labelledby="privacy-title">
+    <form method="dialog">
+      <h3 id="privacy-title">Privacy note</h3>
+      <div class="privacy-text">
+        <p>Spectra are read and processed in the browser and never leave your computer;
+          copying and printing figures happen locally too. The page makes no requests to third
+          parties (fonts and Plotly are bundled, and Plotly's cloud sharing is disabled), and
+          the page itself sets no cookies. The only thing it stores is your theme and sidebar
+          layout, in the browser's local storage.</p>
+        <p>The hosting does see visits. GitHub Pages logs visitor IP addresses for security, and
+          when the site is opened at ssnom-qc.js.org the requests also pass through Cloudflare
+          (used by js.org), which may set a bot-protection cookie. The site owner has no access
+          to these logs.</p>
+      </div>
     </form>
   </dialog>
 </body>

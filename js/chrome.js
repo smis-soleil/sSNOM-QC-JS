@@ -138,8 +138,15 @@ export function setupFullscreen(onChange) {
   }
 }
 
+function setupPrivacy() {
+  const dialog = $("privacy-dialog");
+  $("privacy-btn").addEventListener("click", () => dialog.showModal());
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); }); // backdrop
+}
+
 export function setupChrome({ prepareForPrint, copyFigures } = {}) {
   setupSidebar();
   setupHeaderActions(prepareForPrint, copyFigures);
   setupCopyButtons();
+  setupPrivacy();
 }

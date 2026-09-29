@@ -167,6 +167,38 @@ describe("copy figures", () => {
   });
 });
 
+describe("privacy note", () => {
+  test("the sidebar button opens the note, Esc and the backdrop close it", async () => {
+    const app = await loadApp();
+    const dialog = app.$("privacy-dialog");
+    assert.equal(dialog.open, false);
+    app.click("privacy-btn");
+    assert.equal(dialog.open, true);
+    dialog.dispatchEvent(new app.window.MouseEvent("click", { bubbles: true }));
+    assert.equal(dialog.open, false);
+    app.click("privacy-btn");
+    dialog.close(); // what the browser does on Esc
+    assert.equal(dialog.open, false);
+  });
+
+  test("says the same as the README", async () => {
+    const app = await loadApp();
+    const norm = (t) => t.replace(/\s+/g, " ").trim();
+    const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+    const section = readme.split("## Privacy\n")[1].split("\n## ")[0];
+    const paragraphs = section.split(/\n\s*\n/).map(norm).filter(Boolean);
+    const popup = [...app.$("privacy-dialog").querySelectorAll(".privacy-text p")].map((p) => norm(p.textContent));
+    assert.deepEqual(popup, paragraphs);
+  });
+
+  test("shortcuts are paused while it is open", async () => {
+    const app = await loadApp();
+    app.click("privacy-btn");
+    app.key("s");
+    assert.equal(app.$("app").classList.contains("sidebar-collapsed"), false);
+  });
+});
+
 describe("fullscreen and code block", () => {
   test("a figure goes fullscreen and back with the button or Esc", async () => {
     const app = await loadApp();
