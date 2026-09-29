@@ -81,11 +81,16 @@ npm test             # all tests (Node 22+ built-in test runner)
 
 ## Privacy
 
-Spectra are read and processed in the browser and never sent anywhere. The page makes
-no requests to third parties (fonts and Plotly are bundled, Plotly's cloud-sharing button
-is disabled) and sets no cookies. The only thing stored is the theme and sidebar layout,
-in the browser's local storage. As for any GitHub Pages site, GitHub logs visitor IP
-addresses for security; those logs are not visible to the site owner.
+Spectra are read and processed in the browser and never leave your computer; copying
+and printing figures happen locally too. The page makes no requests to third parties
+(fonts and Plotly are bundled, and Plotly's cloud sharing is disabled), and the page
+itself sets no cookies. The only thing it stores is your theme and sidebar layout, in
+the browser's local storage.
+
+The hosting does see visits. GitHub Pages logs visitor IP addresses for security, and
+when the site is opened at ssnom-qc.js.org the requests also pass through Cloudflare
+(used by js.org), which may set a bot-protection cookie. The site owner has no access
+to these logs.
 
 ## License
 
