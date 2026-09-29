@@ -44,9 +44,11 @@ Intentional differences from the Streamlit version:
 
 ## Hosting on GitHub Pages
 
-The site is served by GitHub Pages from the root of `main` (*Settings → Pages →
-Deploy from a branch*). No build step is needed: every push to `main` is live at
-<https://smis-soleil.github.io/sSNOM-QC-JS/> about a minute later.
+The site is published to <https://smis-soleil.github.io/sSNOM-QC-JS/> by the
+*Test and deploy* workflow (`.github/workflows/deploy.yml`, *Settings → Pages → Source:
+GitHub Actions*). Every push runs the tests; a push to `main` goes live, about two
+minutes later, only if they all pass. No build step is needed: the workflow copies
+`index.html`, `favicon.svg`, `css/`, `js/` and `vendor/` as they are.
 
 ## Local development
 
