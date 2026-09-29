@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>sSNOM-QC</title>
+  <meta name="description" content="Quality control for NeaSNOM nano-FTIR spectra. Runs entirely in your browser; files never leave your computer.">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Applied before first paint so a saved theme / collapsed sidebar does not flash. -->
+  <script>
+    try {
+      const t = localStorage.getItem("ssnomqc-theme");
+      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      const w = Number(localStorage.getItem("ssnomqc-sidebar-width"));
+      if (w >= 200 && w <= 600) document.documentElement.style.setProperty("--sidebar-width", w + "px");
+    } catch (e) { /* storage unavailable */ }
+  </script>
+  <script src="vendor/plotly-basic.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar" aria-label="Sidebar">
+      <div class="sidebar-header">
+        <button type="button" class="icon-btn collapse-btn" id="collapse-btn" aria-label="Collapse sidebar" title="Collapse sidebar"><span data-icon="collapse"></span></button>
+      </div>
+      <div class="sidebar-content">
+        <h1>sSNOM-QC</h1>
+        <p>Open two NeaSNOM files.</p>
+
+        <section class="uploader" id="uploader" aria-label="uploader">
+          <input type="file" id="file-input" accept=".txt" class="visually-hidden" tabindex="-1">
+          <div class="dropzone" id="dropzone">
+            <div class="upl-empty" id="upl-empty">
+              <button type="button" class="btn btn-secondary" id="upload-btn"><span data-icon="upload" data-size="18"></span>Open</button>
+              <small>200MB per file • TXT</small>
+            </div>
+            <div class="upl-chip-row" id="upl-chip-row" hidden>
+              <div class="upl-chip">
+                <span class="upl-chip-icon" data-icon="file" data-size="18"></span>
+                <div class="upl-chip-text">
+                  <span class="upl-chip-name" id="upl-chip-name"></span>
+                  <small class="upl-chip-size" id="upl-chip-size"></small>
+                </div>
+                <button type="button" class="icon-btn upl-chip-remove" id="upl-chip-remove"><span data-icon="cancel" data-size="16"></span></button>
+              </div>
+              <button type="button" class="icon-btn upl-add" id="upl-add" aria-label="Add files" title="Add files"><span data-icon="add" data-size="18"></span></button>
+            </div>
+          </div>
+        </section>
+
+        <div id="upload-messages" class="stack"></div>
+
+        <div id="file-list-section" hidden>
+          <h3>Uploaded Files:</h3>
+          <div id="file-list" class="stack"></div>
+        </div>
+
+        <div id="status-message" class="stack"></div>
+
+        <div id="order-section" class="order" hidden>
+          <span class="widget-label" id="order-label">Select demodulation order</span>
+          <div class="segmented" id="order-options" role="group" aria-labelledby="order-label"></div>
+        </div>
+
+        <div id="compat-messages" class="stack"></div>
+
+        <details class="expander" id="custom-snr">
+          <summary><span class="expander-chevron" data-icon="chevron" data-size="18"></span><span>Custom SNR graphs</span></summary>
+          <div class="expander-body">
+            <div class="snr-grid" id="snr-rows">
+              <strong class="snr-head">start</strong><strong class="snr-head">end</strong><span></span><span></span>
+            </div>
+            <button type="button" class="btn btn-green btn-block" id="display-graphs">Display graphs</button>
+            <div id="custom-messages" class="stack"></div>
+          </div>
+        </details>
+
+        <button type="button" class="btn btn-primary btn-block" id="reset">Reset All</button>
+      </div>
+      <div class="sidebar-resizer" id="sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="app-header">
+        <button type="button" class="icon-btn expand-btn" id="expand-btn" aria-label="Expand sidebar" title="Expand sidebar" hidden><span data-icon="expand"></span></button>
+        <div class="header-actions" role="toolbar" aria-label="Page actions">
+          <button type="button" class="icon-btn" data-theme-choice="light" aria-label="Light theme" title="Light theme"><span data-icon="light"></span></button>
+          <button type="button" class="icon-btn" data-theme-choice="dark" aria-label="Dark theme" title="Dark theme"><span data-icon="dark"></span></button>
+          <button type="button" class="icon-btn" id="copy-figures-btn" aria-label="Copy figures to clipboard" title="Copy figures to clipboard" disabled><span data-icon="copy"></span></button>
+          <button type="button" class="icon-btn" id="print-btn" aria-label="Print" title="Print"><span data-icon="print"></span></button>
+        </div>
+      </header>
+
+      <main class="main" id="main">
+        <!-- Blocks are (re)arranged by render() in Streamlit's output order. -->
+        <section id="motd">
+          <h2 id="suggested-experiment-parameters" class="anchored">Suggested experiment parameters<a class="anchor" href="#suggested-experiment-parameters" aria-label="Link to heading"><span data-icon="link" data-size="18"></span></a></h2>
+          <div class="code-block">
+            <pre><code>For best comparison between measurements we suggest to use the following parameters.
+
+In-contact tapping amplitude: 80 nm
+Number of acquisitions: 16
+Integration time: 20 ms
+Spectral resolution: 6 cm⁻¹</code></pre>
+            <button type="button" class="icon-btn copy-btn" aria-label="Copy to clipboard" title="Copy to clipboard"><span data-icon="copy" data-size="16"></span></button>
+          </div>
+        </section>
+
+        <div class="figure" id="main-figure" hidden>
+          <div class="element-toolbar"><button type="button" class="icon-btn fs-btn" aria-label="Fullscreen" title="Fullscreen"><span data-icon="fullscreen" data-size="18"></span></button></div>
+          <div class="plot" id="main-plot"></div>
+          <img class="print-img" id="main-print" alt="SNR comparison figure">
+        </div>
+
+        <h3 id="additional-snr-graphs" class="anchored" hidden>Additional SNR graphs<a class="anchor" href="#additional-snr-graphs" aria-label="Link to heading"><span data-icon="link" data-size="18"></span></a></h3>
+        <div class="figure" id="custom-figure" hidden>
+          <div class="element-toolbar"><button type="button" class="icon-btn fs-btn" aria-label="Fullscreen" title="Fullscreen"><span data-icon="fullscreen" data-size="18"></span></button></div>
+          <div class="plot" id="custom-plot"></div>
+          <img class="print-img" id="custom-print" alt="Custom SNR range figure">
+        </div>
+
+        <section id="metadata-section" hidden>
+          <hr>
+          <h3 id="full-metadata" class="anchored">Full metadata<a class="anchor" href="#full-metadata" aria-label="Link to heading"><span data-icon="link" data-size="18"></span></a></h3>
+          <div class="metadata" id="metadata"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <dialog class="modal" id="shortcuts-dialog" aria-labelledby="shortcuts-title">
+    <form method="dialog">
+      <h3 id="shortcuts-title">Keyboard shortcuts</h3>
+      <table class="shortcuts"><tbody></tbody></table>
+      <div class="modal-actions"><button type="submit" class="btn btn-secondary">Close</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
